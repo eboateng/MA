@@ -1,6 +1,6 @@
 % Read the CSV file into a table
 
-data = readtable('motion_data.csv');
+data = readtable('../motion_data.csv');
 
 data.Properties.VariableNames = {'Time', 'Roll (rad)', 'Pitch (rad)', 'Yaw (rad)', 'Heave', 'Sway', 'Surge', 'fkRoll', 'fkPitch', 'fkYaw', 'src'};
 
@@ -10,14 +10,14 @@ roll = rad2deg(data.('Roll (rad)'));
 pitch = rad2deg(data.('Pitch (rad)'));
 yaw = rad2deg(data.('Yaw (rad)'));
 fkroll = rad2deg(data.('fkRoll'));
-fkpitch = rad2deg( data.('fkPitch'));
+fkpitch = rad2deg(data.('fkPitch'));
 fkyaw = rad2deg(data.('fkYaw'));
 
 % Plot roll, fkroll
 figure;
-plot(time, roll, 'r', 'LineWidth', 1.5);
+plot(time, roll, 'r', 'LineWidth', 0.5);
 hold on;
-plot(time, fkroll, 'g--', 'LineWidth', 1.5);
+plot(time, fkroll, 'g--', 'LineWidth', 0.5);
 xlabel('Time');
 ylabel('Angle (radians/degrees)');
 title('Roll and fkRoll');
