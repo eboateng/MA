@@ -8,7 +8,7 @@ data.Properties.VariableNames = {'Time', 'Roll (rad)', 'Pitch (rad)', 'Yaw (rad)
 
 % Read data from the second CSV file
 data2 = readtable(file2);
-data2.Properties.VariableNames = {'Timestamp','Pitch(deg)','Roll(deg)','Yaw(deg)'};
+data2.Properties.VariableNames = {'Timestamp','Roll(deg)','Pitch(deg)','Yaw(deg)', 'Roll (rad)', 'Pitch (rad)', 'Yaw (rad)'};
 
 
 % Extract relevant data
@@ -24,7 +24,11 @@ time2 = datenum(data2.('Timestamp'));  % Convert the time string
 roll2 = data2.('Roll(deg)');
 pitch2 = data2.('Pitch(deg)');
 yaw2 = data2.('Yaw(deg)');
+roll3 = rad2deg(data2.('Roll (rad)'));
+pitch3 = rad2deg(data2.('Pitch (rad)'));
+yaw3 = rad2deg(data2.('Yaw (rad)'));
 
+% try to synchromize timestamps
 newTable = synchronize(time, time2,'commonrange', 'linear')
 % Plot both files over time
 figure;
