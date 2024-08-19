@@ -1,0 +1,37 @@
+/*
+ * Copyright (C) 2012-2022 MotionSystems
+ * 
+ * This file is part of ForceSeatMI SDK.
+ *
+ * www.motionsystems.eu
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ * SOFTWARE.
+ */
+#ifndef FORCE_SEAT_MI_DEFINES_H
+#define FORCE_SEAT_MI_DEFINES_H
+
+#ifdef EXPORT_FORCESEAT_MI
+	#if defined(_WIN32)
+		#define FORCESEAT_MI_EXPORT __declspec(dllexport)
+	#else
+		#define FORCESEAT_MI_EXPORT __attribute__((visibility("default")))
+	#endif
+#else
+#  define FORCESEAT_MI_EXPORT
+#endif
+
+#if defined(__GNUC__)
+	#define FSMI_FATTR
+	#define FSMI_PACKED __attribute__((packed, aligned(1)))
+#else
+	#define FSMI_FATTR __cdecl
+	#define FSMI_PACKED
+#endif
+
+#endif
