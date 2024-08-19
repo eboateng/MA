@@ -1,0 +1,104 @@
+Example
+Warning: Warnings messages were produced while parsing.  Check the
+functions you intend to use for correctness.  Warning text can be
+viewed using:
+ [notfound,warnings]=loadlibrary(...) 
+> In loadlibrary
+  In FSMI_Create (line 3)
+  In Example (line 1) 
+Error loading library intermediate output follows.
+The actual error is at the end of this output.
+*********
+Unescaped left brace in regex is deprecated here (and will be fatal in Perl 5.30), passed through in regex; marked by <-- HERE in m/struct([^;,{(]*){ <-- HERE (.*?)\}([^;])*;/ at C:\Program Files\MATLAB\R2018b\toolbox\matlab\general\private\prototypes.pl line 912.
+
+Failed to parse type '( __cdecl__ )) ForceSeatMI_Create (' original input '( __cdecl__ )) ForceSeatMI_Create ('
+Found on line 563 of input from line 42 of file D:\\NextCloud\\Masterarbeit\\Code\\PlatformController\\Examples\\ForceSeatMI_2.103\\examples\\TableLogPos_Matlab\\include\\ForceSeatMI_Functions.h
+Error parsing argument for function __attribute__ function may be invalid.
+
+Failed to parse type '( __cdecl__ )) ForceSeatMI_Delete ( FSMI_Handle api' original input '( __cdecl__ )) ForceSeatMI_Delete ( FSMI_Handle api '
+Found on line 569 of input from line 48 of file D:\\NextCloud\\Masterarbeit\\Code\\PlatformController\\Examples\\ForceSeatMI_2.103\\examples\\TableLogPos_Matlab\\include\\ForceSeatMI_Functions.h
+Error parsing argument for function __attribute__ function may be invalid.
+
+Failed to parse type '( __cdecl__ )) ForceSeatMI_BeginMotionControl ( FSMI_Handle api' original input '( __cdecl__ )) ForceSeatMI_BeginMotionControl ( FSMI_Handle api '
+Found on line 575 of input from line 54 of file D:\\NextCloud\\Masterarbeit\\Code\\PlatformController\\Examples\\ForceSeatMI_2.103\\examples\\TableLogPos_Matlab\\include\\ForceSeatMI_Functions.h
+Error parsing argument for function __attribute__ function may be invalid.
+
+Failed to parse type '( __cdecl__ )) ForceSeatMI_EndMotionControl ( FSMI_Handle api' original input '( __cdecl__ )) ForceSeatMI_EndMotionControl ( FSMI_Handle api '
+Found on line 581 of input from line 60 of file D:\\NextCloud\\Masterarbeit\\Code\\PlatformController\\Examples\\ForceSeatMI_2.103\\examples\\TableLogPos_Matlab\\include\\ForceSeatMI_Functions.h
+Error parsing argument for function __attribute__ function may be invalid.
+*********
+Error using loadlibrary
+Building ForceSeatMI64_thunk_pcwin64 failed.  Compiler output is:
+C:\ProgramData\MATLAB\SupportPackages\R2018b\3P.instrset\mingw_w64.instrset\bin\gcc
+-I"C:\Program Files\MATLAB\R2018b\extern\include" -fexceptions
+-fno-omit-frame-pointer
+-I"D:\NextCloud\Masterarbeit\Code\PlatformController\Examples\ForceSeatMI_2.103\examples\TableLogPos_Matlab"
+-I"D:\NextCloud\Masterarbeit\Code\PlatformController\Examples\ForceSeatMI_2.103\examples\TableLogPos_Matlab\include"
+"ForceSeatMI64_thunk_pcwin64.c" -o "ForceSeatMI64_thunk_pcwin64.dll"
+-shared
+ForceSeatMI64_thunk_pcwin64.c: In function 'voidPtr':
+ForceSeatMI64_thunk_pcwin64.c:33:42: error: expected declaration
+specifiers before ')' token
+ EXPORT_EXTERN_C void *
+ voidPtr(__cdecl__))ForceSeatMI_Create(Thunk(void fcn(),const char
+ *callstack,int stacksize)
+                                          ^
+ForceSeatMI64_thunk_pcwin64.c:5:26: error: expected declaration
+specifiers before '__attribute__'
+   #define DLL_EXPORT_SYM __declspec(dllexport)
+                          ^
+ForceSeatMI64_thunk_pcwin64.c:19:25: note: in expansion of macro
+'DLL_EXPORT_SYM'
+ #define EXPORT_EXTERN_C DLL_EXPORT_SYM
+                         ^~~~~~~~~~~~~~
+ForceSeatMI64_thunk_pcwin64.c:42:1: note: in expansion of macro
+'EXPORT_EXTERN_C'
+ EXPORT_EXTERN_C void
+ void(__cdecl__))ForceSeatMI_Delete(FSMI_HandleapiThunk(void
+ fcn(),const char *callstack,int stacksize)
+ ^~~~~~~~~~~~~~~
+ForceSeatMI64_thunk_pcwin64.c:5:26: error: expected declaration
+specifiers before '__attribute__'
+   #define DLL_EXPORT_SYM __declspec(dllexport)
+                          ^
+ForceSeatMI64_thunk_pcwin64.c:19:25: note: in expansion of macro
+'DLL_EXPORT_SYM'
+ #define EXPORT_EXTERN_C DLL_EXPORT_SYM
+                         ^~~~~~~~~~~~~~
+ForceSeatMI64_thunk_pcwin64.c:51:1: note: in expansion of macro
+'EXPORT_EXTERN_C'
+ EXPORT_EXTERN_C int8_T
+ int8(__cdecl__))ForceSeatMI_BeginMotionControl(FSMI_HandleapiThunk(void
+ fcn(),const char *callstack,int stacksize)
+ ^~~~~~~~~~~~~~~
+ForceSeatMI64_thunk_pcwin64.c:5:26: error: expected declaration
+specifiers before '__attribute__'
+   #define DLL_EXPORT_SYM __declspec(dllexport)
+                          ^
+ForceSeatMI64_thunk_pcwin64.c:19:25: note: in expansion of macro
+'DLL_EXPORT_SYM'
+ #define EXPORT_EXTERN_C DLL_EXPORT_SYM
+                         ^~~~~~~~~~~~~~
+ForceSeatMI64_thunk_pcwin64.c:60:1: note: in expansion of macro
+'EXPORT_EXTERN_C'
+ EXPORT_EXTERN_C int8_T
+ int8(__cdecl__))ForceSeatMI_EndMotionControl(FSMI_HandleapiThunk(void
+ fcn(),const char *callstack,int stacksize)
+ ^~~~~~~~~~~~~~~
+ForceSeatMI64_thunk_pcwin64.c:33:24: warning: type of '__cdecl__'
+defaults to 'int' [-Wimplicit-int]
+ EXPORT_EXTERN_C void *
+ voidPtr(__cdecl__))ForceSeatMI_Create(Thunk(void fcn(),const char
+ *callstack,int stacksize)
+                        ^~~~~~~
+ForceSeatMI64_thunk_pcwin64.c:66:1: error: expected '{' at end of
+input
+ }
+ ^
+
+
+Error in FSMI_Create (line 3)
+        loadlibrary(FSMI_Path(), 'include/ForceSeatMI_Functions.h')
+
+Error in Example (line 1)
+api = FSMI_Create();
