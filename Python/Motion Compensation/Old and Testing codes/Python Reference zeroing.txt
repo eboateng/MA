@@ -1,0 +1,73 @@
+# load library
+# give location of dll
+PS30 = windll.LoadLibrary("ps30.dll")
+
+# open virtual serial interface (or serial interface via tcp/ip socket)
+if ps30ComPort==0: # find first connected control unit
+    result1=PS30.PS30_SimpleConnect(1, b"") # ANSI/Unicode !!
+elif ps30ComPort==-1: # find the first connected control unit via tcp/ip socket (localhost, port=1200)
+    result1=PS30.PS30_SimpleConnect(1, b"net") # ANSI/Unicode !!
+else: # connect control unit with defined COM port
+    result1=PS30.PS30_Connect(1, 0, ps30ComPort, 115200,0,0,0,0)
+
+# define constants for calculation Inc -> mm
+#result1=PS30.PS30_SetStageAttributes(1, nAxis, c_double(1.0), 200, c_double(1.0))
+
+# load param file
+if nExport==2:
+    result1=PS30.PS30_LoadTextFile(1, ax1, b"ps30_params_export.txt") # ANSI/Unicode !!
+
+# initialize axis
+result1=PS30.PS30_MotorInit(1, ax1)
+result1=PS30.PS30_MotorInit(1, ax2)
+
+# save param file
+if nExport==1:
+    result1=PS30.PS30_SaveTextFile(1, ax1, b"ps30_params_export.txt") # ANSI/Unicode !!
+
+
+
+##PS30_GetPositionEx=PS30.PS30_GetPositionEx
+##PS30_GetPositionEx.restype = ctypes.c_double
+##result2=PS30_GetPositionEx(1, nAxis)
+##result3=PS30_GetPositionEx(1, 1)
+##print("Position=%.3f" %(result2))
+
+#check if reference run was previously executed
+# TBD
+
+def do_referenceRun():
+    ##start positioning
+    PS30.PS30_GoRef(1, ax1, 6)
+    PS30.PS30_GoRef(1, ax2, 6)
+    time.sleep(0.5)
+
+    state1 = PS30.PS30_GetMoveState(1, ax1)
+    state2 = PS30.PS30_GetMoveState(1, ax2)
+
+    while state1 != 0 or state2 != 0:
+        state1 = PS30.PS30_GetMoveState(1,ax1)
+        state2 = PS30.PS30_GetMoveState(1,ax2)
+
+    error = PS30.PS30_SetPosMode(1,ax1,0)
+    error = PS30.PS30_SetPosMode(1,ax2,0)
+
+    # set target mode (0 - relative)
+    PS30.PS30_SetTargetMode(1, ax1, 0)
+    PS30.PS30_SetTargetMode(1, ax2, 0)
+
+    PS30.PS30_SetTarget(1, ax1, c_double(dZero))
+    PS30.PS30_SetTarget(1, ax2, c_double(dZero))
+
+    result = PS30.PS30_MoveEx(1, ax1, c_double(dZero), 1)
+    result = PS30.PS30_MoveEx(1, ax2, c_double(dZero), 1)
+
+    #save the zero position
+    z1 = 0.0072 * PS30.PS30_GetPositionEx(1,ax1);
+    z2 = 0.0072 * PS30.PS30_GetPositionEx(1,ax2);
+
+    PS30.PS30_SetPositionEx(1,1,0);
+    PS30.PS30_SetPositionEx(1,2,0);
+
+    print(z1)
+

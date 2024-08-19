@@ -1,0 +1,508 @@
+# -*- coding: utf-8 -*-
+"""
+Created on Wed Aug 17 11:06:45 2016
+
+@author: as
+"""
+
+import ctypes
+#from ctypes import *
+from ctypes import windll, c_double
+#from ctypes import windll, c_double, create_string_buffer
+import sys
+import time
+sys.path.append("../../dependencies/Python")
+import mscl
+import math
+import numpy as np
+
+
+# PS30 Globals
+ps30ComPort=2 
+ax1=1 #axes 1
+ax2=2 # axes 2
+dPosF=3000
+dDistance_az=0
+dDistance_elev=0
+dZero = 26 
+nExport=0
+nAxis = 2
+
+
+# IMU Globals
+imuComPort = "COM5"
+#roll, pitch, yaw = 0, 0, 0
+
+
+# load library
+# give location of dll
+PS30 = windll.LoadLibrary("ps30.dll")
+
+# open virtual serial interface (or serial interface via tcp/ip socket)
+if ps30ComPort==0: # find first connected control unit
+    result1=PS30.PS30_SimpleConnect(1, b"") # ANSI/Unicode !!
+elif ps30ComPort==-1: # find the first connected control unit via tcp/ip socket (localhost, port=1200)
+    result1=PS30.PS30_SimpleConnect(1, b"net") # ANSI/Unicode !!
+else: # connect control unit with defined COM port
+    result1=PS30.PS30_Connect(1, 0, ps30ComPort, 115200,0,0,0,0)
+
+# define constants for calculation Inc -> mm
+#result1=PS30.PS30_SetStageAttributes(1, nAxis, c_double(1.0), 200, c_double(1.0))
+
+# load param file
+if nExport==2:
+    result1=PS30.PS30_LoadTextFile(1, ax1, b"ps30_params_export.txt") # ANSI/Unicode !!
+
+# initialize axis
+result1=PS30.PS30_MotorInit(1, ax1)
+result1=PS30.PS30_MotorInit(1, ax2)
+
+# save param file
+if nExport==1:
+    result1=PS30.PS30_SaveTextFile(1, ax1, b"ps30_params_export.txt") # ANSI/Unicode !!
+
+
+
+##PS30_GetPositionEx=PS30.PS30_GetPositionEx
+##PS30_GetPositionEx.restype = ctypes.c_double
+##result2=PS30_GetPositionEx(1, nAxis)
+##result3=PS30_GetPositionEx(1, 1)
+##print("Position=%.3f" %(result2))
+
+#check if reference run was previously executed
+# TBD
+
+def do_referenceRun():
+    ##start positioning
+    PS30.PS30_GoRef(1, ax1, 6)
+    PS30.PS30_GoRef(1, ax2, 6)
+    time.sleep(0.5)
+
+    state1 = PS30.PS30_GetMoveState(1, ax1)
+    state2 = PS30.PS30_GetMoveState(1, ax2)
+
+    while state1 != 0 or state2 != 0:
+        state1 = PS30.PS30_GetMoveState(1,ax1)
+        state2 = PS30.PS30_GetMoveState(1,ax2)
+
+    error = PS30.PS30_SetPosMode(1,ax1,0)
+    error = PS30.PS30_SetPosMode(1,ax2,0)
+
+    # set target mode (0 - relative)
+    PS30.PS30_SetTargetMode(1, ax1, 0)
+    PS30.PS30_SetTargetMode(1, ax2, 0)
+
+    PS30.PS30_SetTarget(1, ax1, c_double(dZero))
+    PS30.PS30_SetTarget(1, ax2, c_double(dZero))
+
+    result = PS30.PS30_MoveEx(1, ax1, c_double(dZero), 1)
+    result = PS30.PS30_MoveEx(1, ax2, c_double(dZero), 1)
+
+    #save the zero position
+    z1 = 0.0072 * PS30.PS30_GetPositionEx(1,ax1);
+    z2 = 0.0072 * PS30.PS30_GetPositionEx(1,ax2);
+
+    PS30.PS30_SetPositionEx(1,1,0);
+    PS30.PS30_SetPositionEx(1,2,0);
+
+    print(z1)
+
+def configure_imu(imuComPort):
+
+    try:
+        # Create a Serial Connection with the specified COM Port, default baud rate of 921600
+        connection = mscl.Connection.Serial(imuComPort)
+        
+        # Create an InertialNode with the connection
+        node = mscl.InertialNode(connection)
+
+        # Many other settings are available than shown below
+        # Reference the documentation for the full list of commands
+
+        # If the node supports AHRS/IMU
+        if node.features().supportsCategory(mscl.MipTypes.CLASS_AHRS_IMU):
+            ahrsImuChs = mscl.MipChannels()
+            ahrsImuChs.append(mscl.MipChannel(mscl.MipTypes.CH_FIELD_SENSOR_EULER_ANGLES, mscl.SampleRate.Hertz(50)))
+            ahrsImuChs.append(mscl.MipChannel(mscl.MipTypes.CH_FIELD_SENSOR_SCALED_ACCEL_VEC, mscl.SampleRate.Hertz(50)))
+            ahrsImuChs.append(mscl.MipChannel(mscl.MipTypes.CH_FIELD_SENSOR_SCALED_GYRO_VEC, mscl.SampleRate.Hertz(50)))
+            ahrsImuChs.append(mscl.MipChannel(mscl.MipTypes.CH_FIELD_SENSOR_SCALED_MAG_VEC, mscl.SampleRate.Hertz(50)))
+
+            # Apply to the node
+            node.setActiveChannelFields(mscl.MipTypes.CLASS_AHRS_IMU, ahrsImuChs)
+
+        # If the node supports Estimation Filter
+        if node.features().supportsCategory(mscl.MipTypes.CLASS_ESTFILTER):
+            estFilterChs = mscl.MipChannels()
+            estFilterChs.append(mscl.MipChannel(mscl.MipTypes.CH_FIELD_ESTFILTER_ESTIMATED_ORIENT_EULER, mscl.SampleRate.Hertz(1)))
+
+            # Apply to the node
+            node.setActiveChannelFields(mscl.MipTypes.CLASS_ESTFILTER, estFilterChs)
+
+        # If the node supports GNSS
+        if node.features().supportsCategory(mscl.MipTypes.CLASS_GNSS):
+            gnssChs = mscl.MipChannels()
+            gnssChs.append(mscl.MipChannel(mscl.MipTypes.CH_FIELD_GNSS_LLH_POSITION, mscl.SampleRate.Hertz(1)))
+
+            # Apply to the node
+            node.setActiveChannelFields(mscl.MipTypes.CLASS_GNSS, gnssChs)
+
+        node.setPitchRollAid(True)
+
+        node.setAltitudeAid(True)
+
+        offset = mscl.PositionOffset(0.0, 0.0, 0.0)
+        node.setAntennaOffset(offset)
+        return node
+        
+    except mscl.Error as e:
+        print("Error:", e)
+        return None
+
+def read_imu_data(node):
+    while True:
+        try:
+            roll, pitch, yaw = np.nan, np.nan, np.nan
+            
+            # Get all the data packets from the node, with a timeout of 500 milliseconds
+            packets= None
+            packets = node.getDataPackets(500)
+            print("Total packets:",node.totalPackets())
+            
+            packet = packets[-1]
+            # Print out the data
+            print("Packet Received: ",packet.data())
+
+            # Iterate over all the data points in the packet
+            for dataPoint in packet.data():
+                # Print out the channel data
+                # Note: The as_string() function is being used here for simplicity.
+                # Other methods (i.e., as_float, as_uint16, as_Vector) are also available.
+                # To determine the format that a dataPoint is stored in, use dataPoint.storedAs().
+                print("Datapoint \n")
+                print(dataPoint.channelName() + ":", dataPoint.as_string() + " ", end="")
+                print("--\n")
+
+                if not dataPoint.valid():
+                    print("[Invalid DataPoint]")
+                    continue
+
+                channel = dataPoint.channelName()
+                if channel == "roll":
+                    roll = math.degrees(dataPoint.as_float())
+                elif channel == "pitch":
+                    pitch = math.degrees(dataPoint.as_float()) 
+                elif channel == "yaw":
+                    yaw = math.degrees(dataPoint.as_float()) 
+
+            # print("Roll:", roll," Pitch:",pitch, " Yaw:",yaw, "\n" )
+            # If the dataPoint is invalid
+            if not dataPoint.valid():
+                print("[Invalid] ", end="")
+
+            if not (np.isnan(roll) and np.isnan(pitch) and np.isnan(yaw)):
+                return roll, pitch, yaw
+            else:
+                return None
+            
+           
+        except mscl.Error as e:
+            print("Error reading IMU data:", e)
+            return None      
+
+def compensationRT(target_azimuth, target_elevation, roll, pitch, yaw):
+    # Convert angles from degrees to radians
+    phi = np.radians(roll)
+    theta = np.radians(pitch)
+    psi = np.radians(yaw)
+    azimuth = np.radians(target_azimuth)
+    elevation = np.radians(target_elevation)
+
+    # Construct rotation matrix
+    R = np.array([[np.cos(psi), -np.sin(psi)],
+                  [np.sin(psi),  np.cos(psi)]])
+    
+    # Rotate azimuth and elevation
+    azimuth_elevation = np.array([azimuth, elevation])
+    rotated = np.matmul(R, azimuth_elevation)
+    rotated = azimuth_elevation + rotated  # review this line
+
+    shifted = azimuth_elevation - np.array([phi, theta])
+    # Translate (adjust for roll and pitch)
+    translated = rotated + np.array([phi, theta])
+
+    # Correct for initial azimuth and elevation by reversing the rotation
+    R_inverse = np.array([[ np.cos(-psi), -np.sin(-psi)],
+                          [ np.sin(-psi),  np.cos(-psi)]])
+    
+    corrected = np.matmul(R_inverse, shifted)
+
+    az_elev_correct = np.matmul(R,corrected)
+
+    # Convert back to degrees
+    corrected_azimuth, corrected_elevation = np.degrees(corrected)
+
+    return corrected_azimuth, -corrected_elevation 
+
+
+def adjust_for_motion(target_azimuth, target_elevation, roll, pitch, yaw):
+    # Convert angles from degrees to radians
+    phi = np.radians(roll)
+    theta = np.radians(pitch)
+    psi = np.radians(yaw)
+    azimuth = np.radians(target_azimuth)
+    elevation = np.radians(target_elevation)
+    # Rotation matrices for roll, pitch, yaw
+    Rx = np.array([[1, 0, 0], [0, np.cos(phi), -np.sin(phi)], [0, np.sin(phi), np.cos(phi)]])
+    Ry = np.array([[np.cos(theta), 0, np.sin(theta)], [0, 1, 0], [-np.sin(theta), 0, np.cos(theta)]])
+    Rz = np.array([[np.cos(psi), -np.sin(psi), 0], [np.sin(psi), np.cos(psi), 0], [0, 0, 1]])
+    # Combined rotation matrix
+    R = Rz.dot(Ry).dot(Rx)
+    # Target vector in local coordinates
+    V_local = np.array([np.cos(-elevation) * np.cos(-azimuth), np.cos(-elevation) * np.sin(-azimuth), np.sin(-elevation)])
+    # Adjust the target vector for the rotation
+    V_adjusted = np.linalg.inv(R).dot(V_local)
+    # Calculate new azimuth and elevation from the adjusted vector
+    new_azimuth = np.arctan2(V_adjusted[1], V_adjusted[0])
+    new_elevation = np.arcsin(V_adjusted[2] / np.linalg.norm(V_adjusted))
+    # Convert the new azimuth and elevation back to degrees
+    new_azimuth_deg = np.degrees(new_azimuth)
+    new_elevation_deg = np.degrees(new_elevation)
+    
+    return new_azimuth_deg, new_elevation_deg
+ 
+def motionCompensation(target_azimuth, target_elevation, roll, pitch, yaw):
+    # Convert angles from degrees to radians
+    phi = np.radians(roll)
+    theta = np.radians(pitch)
+    azimuth = np.radians(target_azimuth)
+    elevation = np.radians(target_elevation)
+    # Rotation matrices for roll, pitch, yaw
+    Rx = np.array([[1, 0, 0], [0, np.cos(phi), -np.sin(phi)], [0, np.sin(phi), np.cos(phi)]])
+    Ry = np.array([[np.cos(theta), 0, np.sin(theta)], [0, 1, 0], [-np.sin(theta), 0, np.cos(theta)]])
+    # Combined rotation matrix
+    R = Ry.dot(Rx)
+    # Target vector in local coordinates
+    V_local = np.array([np.cos(-elevation) * np.cos(-azimuth), np.cos(-elevation) * np.sin(-azimuth), np.sin(-elevation)])
+    # Adjust the target vector for the rotation
+    V_adjusted = np.linalg.inv(R).dot(V_local)
+    # Calculate new azimuth and elevation from the adjusted vector
+    new_azimuth = np.arctan2(V_adjusted[1], V_adjusted[0])
+    new_elevation = np.arcsin(V_adjusted[2] / np.linalg.norm(V_adjusted))
+    # Convert the new azimuth and elevation back to degrees
+    new_azimuth_deg = np.degrees(new_azimuth)
+    new_elevation_deg = np.degrees(new_elevation)
+    
+    return new_azimuth_deg, new_elevation_deg
+ 
+def compensateMotion(target_azimuth, target_elevation, roll, pitch, yaw):
+    # Convert angles from degrees to radians
+    yaw = np.radians(yaw)
+    phi = np.radians(roll)
+    theta = np.radians(pitch)
+    psi = np.radians(yaw)
+    azimuth = np.radians(target_azimuth)
+    elevation = np.radians(target_elevation)
+    # Rotation matrices for roll, pitch, yaw
+    Rx = np.array([[1, 0, 0], [0, np.cos(phi), -np.sin(phi)], [0, np.sin(phi), np.cos(phi)]])
+    Ry = np.array([[np.cos(theta), 0, np.sin(theta)], [0, 1, 0], [-np.sin(theta), 0, np.cos(theta)]])
+    Rz = np.array([[np.cos(psi), np.sin(psi), 0], [-np.sin(psi), np.cos(psi), 0], [0, 0, 1]])
+    # Combined rotation matrix
+    R = Rz.dot(Ry).dot(Rx)
+    #print("R",R)
+    # Target vector in local coordinates
+    V_local = np.array([np.cos(-elevation) * np.cos(-azimuth), np.cos(-elevation) * np.sin(-azimuth), np.sin(-elevation)])
+    #print("V_local:",V_local)
+    # Adjust the target vector for the rotation
+    V_adjusted = np.linalg.inv(R).dot(V_local)
+    #print("V_adjusted",V_adjusted)
+    # Calculate new azimuth and elevation from the adjusted vector
+    new_azimuth = np.arctan2(V_adjusted[1], V_adjusted[0])
+    new_elevation = np.arcsin(V_adjusted[2] / np.linalg.norm(V_adjusted))
+    # Convert the new azimuth and elevation back to degrees
+    new_azimuth_deg = np.degrees(new_azimuth)
+    new_elevation_deg = np.degrees(new_elevation)
+    
+    return new_azimuth_deg, new_elevation_deg
+
+def motionOut(target_azimuth, target_elevation, roll, pitch, yaw):
+    import numpy as np
+    # Convert angles to radians
+    phi = np.radians(roll)
+    theta = np.radians(pitch)
+    psi = np.radians(yaw)
+    # Convert target azimuth and elevation to Cartesian coordinates for the lidar vector
+    lidar_vector = np.array([
+        np.cos(np.radians(target_elevation)) * np.cos(np.radians(target_azimuth)),
+        np.cos(np.radians(target_elevation)) * np.sin(np.radians(target_azimuth)),
+        np.sin(np.radians(target_elevation))
+    ])
+    # Rotation matrices
+    R_z = np.array([
+        [np.cos(psi), -np.sin(psi), 0],
+        [np.sin(psi), np.cos(psi), 0],
+        [0, 0, 1]])
+    R_y = np.array([
+        [np.cos(theta), 0, np.sin(theta)],
+        [0, 1, 0],
+        [-np.sin(theta), 0, np.cos(theta)]])
+    R_x = np.array([
+        [1, 0, 0],
+        [0, np.cos(phi), -np.sin(phi)],
+        [0, np.sin(phi), np.cos(phi)]])
+    
+
+    # Combined rotation matrix
+    R_combined = R_z @ R_y @ R_x
+    # Adjust lidar vector for motion
+    R_inverted = np.linalg.inv(R_combined)   #-----
+    corrected_lidar_vector = R_inverted @ lidar_vector
+
+    # Compute real zenith angle
+    zenith_angle_rad = np.arccos(corrected_lidar_vector[2] / np.linalg.norm(corrected_lidar_vector))
+    zenith_angle_deg = np.degrees(zenith_angle_rad)
+    # Compute real azimuth angle
+    azimuth_angle_rad = np.arctan2(corrected_lidar_vector[1], corrected_lidar_vector[0])
+    azimuth_angle_deg = np.degrees(azimuth_angle_rad) % 360  # Normalize to [0, 360] degrees
+    #print("Corrected Lidar Vector:", corrected_lidar_vector)
+    #print("Zenith Angle (degrees):", zenith_angle_deg)
+    #print("Azimuth Angle (degrees):", azimuth_angle_deg)
+
+    # Compute the azimuth angle in radians from x and y coordinates
+    azimuth_rad = np.arctan2(corrected_lidar_vector[1], corrected_lidar_vector[0])
+    azimuth_rad = azimuth_rad if azimuth_rad >= 0 else azimuth_rad #+ 2 * np.pi
+
+    # Compute the elevation angle in radians
+    # Elevation is the angle from the XY plane, so use hypotenuse in XY as ‘adjacent’ side
+    hypotenuse_xy = np.sqrt(corrected_lidar_vector[0]**2 + corrected_lidar_vector[1]**2)
+    elevation_rad = np.arctan2(corrected_lidar_vector[2], hypotenuse_xy)
+    # Convert radians to degrees
+    azimuth_deg = np.degrees(azimuth_rad) % 360 - 180
+    elevation_deg = np.degrees(elevation_rad)
+    return azimuth_deg, elevation_deg
+
+def moving_target(sensor_roll, sensor_pitch, sensor_yaw, target_azimuth, target_elevation):
+    # Convert sensor orientation and target angles to radians
+    roll_rad = np.radians(sensor_roll)
+    pitch_rad = np.radians(sensor_pitch)
+    yaw_rad = np.radians(sensor_yaw)
+    target_azimuth_rad = np.radians(target_azimuth)
+    target_elevation_rad = np.radians(target_elevation)
+    # Rotation matrices for sensor roll, pitch, and yaw
+    R_x = np.array([
+        [1, 0, 0],
+        [0, np.cos(roll_rad), -np.sin(roll_rad)],
+        [0, np.sin(roll_rad), np.cos(roll_rad)]
+    ])
+    R_y = np.array([
+        [np.cos(pitch_rad), 0, np.sin(pitch_rad)],
+        [0, 1, 0],
+        [-np.sin(pitch_rad), 0, np.cos(pitch_rad)]
+    ])
+    R_z = np.array([
+        [np.cos(yaw_rad), -np.sin(yaw_rad), 0],
+        [np.sin(yaw_rad), np.cos(yaw_rad), 0],
+        [0, 0, 1]
+    ])
+    # Combined rotation matrix for the sensor
+    R_combined = R_z @ R_y @ R_x
+    # Invert the combined rotation matrix
+    R_inverted = np.linalg.inv(R_combined)
+    # Convert target azimuth and elevation to Cartesian coordinates
+    target_vector = np.array([
+        np.cos(target_elevation_rad) * np.cos(target_azimuth_rad),
+        np.cos(target_elevation_rad) * np.sin(target_azimuth_rad),
+        np.sin(target_elevation_rad)
+    ])
+    #  Inverse rotation to the target vector
+    corrected_target_vector = R_inverted @ target_vector
+    # Compute the corrected azimuth and elevation
+    corrected_azimuth_rad = np.arctan2(corrected_target_vector[1], corrected_target_vector[0])
+    corrected_elevation_rad = np.arcsin(corrected_target_vector[2] / np.linalg.norm(corrected_target_vector))
+    # Convert radians back to degrees
+    corrected_azimuth_deg = np.degrees(corrected_azimuth_rad)-180
+    corrected_elevation_deg = np.degrees(corrected_elevation_rad)
+    return corrected_azimuth_deg, corrected_elevation_deg
+
+
+def main():
+    imu_node = configure_imu(imuComPort)
+    
+    if imu_node is not None:
+        while True:
+            imu_data = None
+            imu_data = read_imu_data(imu_node)
+
+            if imu_data is not None:
+                roll = imu_data[0]
+                pitch = imu_data[1]
+                yaw = imu_data[2]
+                
+                print("roll:",roll, "pitch:", pitch, "yaw:", yaw)
+                
+                pts = [(0,0,2)]
+                for traj in pts: # this is not correct for intended purpose
+                    az = traj[0]
+                    elev = traj[1]
+                    time = traj[2]
+                
+                #transform = adjust_for_motion(0, 0, roll, pitch, yaw) # Little to no compensation 
+                #transform = motionCompensation(0, 0, roll, pitch, yaw) # No compensation, heavily modified
+                #transform = compensateMotion(0, 0, roll, pitch, yaw)
+                #transform = compensationRT(0, 0, roll, pitch, yaw)
+                transform = motionOut(0, 0, roll, pitch, yaw)
+                #transform = moving_target(roll, pitch, yaw, 0, 0)
+                print("transform",transform)
+                #transform_real = tuple(map(lambda i, j: i - j, transform, (roll, pitch)))
+                #print("transform_real", transform_real)
+
+
+                #transform_final = motionOut_inverse(0, 0, roll, pitch, yaw)
+                #transform_final = motionOut_inverse(transform_real[0], transform_real[1], roll, pitch, yaw)
+                #transform = motionOut_inverse(transform_real[0], transform_real[1], roll, pitch, yaw)
+
+                ##pos1 = 0.0072 * PS30.PS30_GetPositionEx(1,ax1);   #Review this line
+                ##pos2 = 0.0072 * PS30.PS30_GetPositionEx(1,ax2);
+
+                ##print("here z1 is:", pos1)
+                ##print("here z2 is:", pos2)
+                
+                #dDistance_az =  pos1 - roll  #transform[0]
+                #dDistance_elev = pos2 - pitch #transform[1]
+
+                dDistance_az =   transform[0] # roll  #
+                dDistance_elev = transform[1]   # pitch #
+                #dDistance_az1 =   transform[0] # roll  #
+                #dDistance_elev1 = transform[1]   # pitch #
+                #print(dDistance_az1)
+                #print(dDistance_elev1)
+
+                if abs(dDistance_az) > 24:
+                    dDistance_az = 24 * (-1 if dDistance_az < 0 else 1)
+                if abs(dDistance_elev) > 24:
+                    dDistance_elev = 24 * (-1 if dDistance_elev < 0 else 1)
+
+                ##print("dDistance_az:", dDistance_az)
+                ##print("dDistance_elev:",dDistance_elev)
+                
+                PS30.PS30_SetTargetMode(1, ax1, 1)
+                PS30.PS30_SetTargetMode(1, ax2, 1)
+
+                PS30.PS30_SetTargetEx(1, ax1, c_double(dDistance_az))
+                PS30.PS30_SetTargetEx(1, ax2, c_double(dDistance_elev))
+
+                #result = PS30.PS30_MoveEx(1, ax1, c_double(dDistance_az), 1)
+                #result = PS30.PS30_MoveEx(1, ax2, c_double(dDistance_elev), 1)
+
+                #result = PS30.PS30_GoTarget(1, ax1)
+                #result = PS30.PS30_GoTarget(1, ax2)
+
+                result = PS30.PS30_MultiGoTarget(1, 3,1)
+                
+
+    else:
+        print("IMU configuration failed")
+
+
+if __name__ == "__main__":
+    main()
+    
